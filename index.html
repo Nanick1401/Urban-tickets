@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Urban Tickets — Your Journey Starts Here</title>
+<meta name="description" content="South African travel agency. Free quotes on flights, hotels, packages and car rentals."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#081227;color:#F6F2E9;font-family:'Inter',system-ui,sans-serif;overflow-x:hidden}
+input,select,button{font-family:inherit}
+input::placeholder{color:rgba(159,180,214,0.5)}
+::-webkit-scrollbar{width:7px;height:7px}
+::-webkit-scrollbar-thumb{background:rgba(232,180,74,.3);border-radius:6px}
+.lift{transition:transform .25s,box-shadow .25s}
+.lift:hover{transform:translateY(-4px);box-shadow:0 18px 44px rgba(0,0,0,.5)}
+.fbtn{transition:transform .2s}.fbtn:hover{transform:scale(1.1)}
+.rhover:hover{background:rgba(255,255,255,.04);cursor:pointer}
+@media(prefers-reduced-motion:reduce){.lift,.fbtn{transition:none}}
+#splash{position:fixed;inset:0;background:#081227;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:9999;transition:opacity .4s}
+#splash.hide{opacity:0;pointer-events:none}
+.spinner{width:44px;height:44px;border:3px solid rgba(232,180,74,.2);border-top-color:#E8B44A;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- Splash shown immediately, hidden after React mounts -->
+<div id="splash">
+  <div class="spinner"></div>
+  <div style="color:#E8B44A;font-size:15px;font-weight:600;letter-spacing:.3px">Urban Tickets</div>
+  <div style="color:#9FB4D6;font-size:12px;text-align:center;max-width:260px;line-height:1.6">
+    Loading…<br>
+    <span id="splash-hint" style="opacity:0;transition:opacity 1s"></span>
+  </div>
+</div>
+
+<div id="root"></div>
+
+<!-- ══════════════════════════════════════════
+     CONFIGURATION — fill in your values here
+     ══════════════════════════════════════════ -->
+<script>
+window.SUPABASE_URL      = 'YOUR_SUPABASE_URL';
+window.SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+window.EMAILJS_PUBLIC_KEY  = 'YOUR_EMAILJS_PUBLIC_KEY';
+window.EMAILJS_SERVICE_ID  = 'YOUR_EMAILJS_SERVICE_ID';
+window.EMAILJS_TEMPLATE_ID = 'YOUR_EMAILJS_TEMPLATE_ID';
+// Show a hint if loading takes >2s (likely opened in wrong viewer)
+setTimeout(function(){
+  var el=document.getElementById('splash-hint');
+  if(el){el.style.opacity='1';el.textContent='Open this file in Chrome or Safari if it stays blank';}
+},2000);
+</script>
+
+<!-- No Babel needed — pure JavaScript below -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  URBAN TICKETS — Full application (pure JS, no Babel)
+//  Urban Travel & Flights · South Africa
+// ═══════════════════════════════════════════════════════
+'use strict';
+var h=React.createElement,
+    F=React.Fragment,
+    useState=React.useState,
+    useEffect=React.useEffect,
+    useRef=React.useRef,
+    useMemo=React.useMemo,
+    useCallback=React.useCallback;
+
+// ── Init Supabase ──────────────────────────────────────
+var CONFIGURED=window.SUPABASE_URL&&!window.SUPABASE_URL.includes('YOUR_');
+var EJ_ON=window.EMAILJS_PUBLIC_KEY&&!window.EMAILJS_PUBLIC_KEY.includes('YOUR_');
+var db=null;
+if(CONFIGURED){try{db=supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY);}catch(e){console.warn(e);}}
+if(EJ_ON&&window.emailjs){try{emailjs.init(window.EMAILJS_PUBLIC_KEY);}catch(e){}}
+
+// ── Theme ──────────────────────────────────────────────
+var C={navy:'#081227',navy2:'#0C1E45',blue:'#1E5BBA',bright:'#2C7BE5',
+  gold:'#E8B44A',soft:'#F3D08A',cream:'#F6F2E9',mist:'#9FB4D6',
+  line:'rgba(232,180,74,0.22)',green:'#2FB47C'};
+var dp='"Fraunces",Georgia,serif',bd='"Inter",system-ui,sans-serif';
+function glass(a){a=a||.06;return{background:'rgba(255,255,255,'+a+')',backdropFilter:'blur(14px)',WebkitBackdropFilter:'blur(14px)',border:'1px solid rgba(255,255,255,0.10)'};}
+var IS={background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.13)',borderRadius:11,padding:'11px 12px',color:C.cream,fontSize:14,fontFamily:bd,outline:'none',width:'100%',boxSizing:'border-box'};
+var BP={pri:{background:'linear-gradient(135deg,'+C.gold+','+C.soft+')',color:C.navy,border:'none',borderRadius:12,padding:'12px 22px',fontWeight:600,fontSize:14.5,fontFamily:bd,cursor:'pointer',boxShadow:'0 8px 24px rgba(232,180,74,.28)'},
+  sm:{background:'linear-gradient(135deg,'+C.gold+','+C.soft+')',color:C.navy,border:'none',borderRadius:10,padding:'9px 16px',fontWeight:600,fontSize:13.5,fontFamily:bd,cursor:'pointer'},
+  ghost:{background:'rgba(255,255,255,.06)',color:C.cream,border:'1px solid rgba(255,255,255,.16)',borderRadius:12,padding:'12px 20px',fontWeight:500,fontSize:14.5,fontFamily:bd,cursor:'pointer'},
+  chip:{background:'rgba(255,255,255,.06)',border:'1px solid '+C.line,color:C.cream,borderRadius:100,padding:'8px 14px',fontSize:13.5,fontFamily:bd,cursor:'pointer'}};
+
+// ── Constants ──────────────────────────────────────────
+var EMAIL='urbantravelflights@gmail.com';
+var CONS=[{name:'Hlengiwe Vilakazi',phone:'+27 67 008 9460',wa:'27670089460'},
+  {name:'Lamla Shasha',phone:'+27 67 961 6149',wa:'27679616149'},
+  {name:'Luvuyo Namba',phone:'+27 68 180 8691',wa:'27681808691'}];
+var STATUSES=['New','Contacted','Quote Sent','Negotiating','Confirmed','Lost'];
+var SCLR={New:'#2C7BE5',Contacted:'#7C5CFF','Quote Sent':'#E8B44A',Negotiating:'#F08C3A',Confirmed:'#2FB47C',Lost:'#8A93A6'};
+
+// ── Helpers ────────────────────────────────────────────
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function money(n){return 'R'+Number(n||0).toLocaleString('en-ZA');}
+function fv(lead,k,fb){return lead[k]||lead[fb]||'';}
+function buildWA(L){
+  return ['*🛫 NEW TRAVEL ENQUIRY — URBAN TICKETS*','',
+    '*Name:* '+(L.name||'—'),'*Phone:* '+(L.phone||'—'),'*Email:* '+(L.email||'—'),'',
+    '*From:* '+fv(L,'from','from_city'),'*To:* '+fv(L,'to','to_city'),
+    '*Depart:* '+fv(L,'depart','depart_date'),'*Return:* '+fv(L,'ret','return_date'),
+    '*Travellers:* '+(L.travellers||'—'),'*Budget:* '+(L.budget||'—'),
+    '*Service:* '+fv(L,'service','service_type'),
+    L.purpose?'*Purpose:* '+L.purpose:'','','*Source:* '+(L.source||'Website'),
+  ].filter(function(l){return l!==null&&l!==undefined;}).join('\n');
+}
+function waLink(lead,num){return 'https://wa.me/'+(num||'27670089460')+'?text='+encodeURIComponent(buildWA(lead));}
+function emailLink(lead){
+  var sub='New Enquiry — '+(lead.name||'Lead')+' ('+fv(lead,'service','service_type')||'General'+')';
+  return 'mailto:'+EMAIL+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(buildWA(lead).replace(/\*/g,''));
+}
+function estimateVal(d,svc){
+  var h=Number(String(d.travellers||'1').replace(/\D/g,''))||1,p=4500;
+  var s=(svc||'').toLowerCase();
+  if(s.includes('package')||s.includes('hotel')) p=7500;
+  if(s.includes('car')) p=3000;
+  var dest=(d.to||d.to_city||'').toLowerCase();
+  if(['dubai','bali','maldives','mauritius','zanzibar'].some(function(x){return dest.includes(x);})) p*=3.2;
+  return Math.round(p*h);
+}
+function norm(r){if(!r)return r;return Object.assign({},r,{
+  from:r.from_city||r.from||'',to:r.to_city||r.to||'',
+  depart:r.depart_date||r.depart||'',ret:r.return_date||r.ret||'',
+  service:r.service_type||r.service||'',value:r.est_value||r.value||0,
+  notes:r.notes||'',status:r.status||'New',assignee:r.assigned_to||r.assignee||''});}
+
+var SEEDS=[
+  {id:'s1',name:'Nomsa Dlamini',phone:'+27 82 555 1020',email:'nomsa@mail.com',from:'Johannesburg',to:'Durban',depart:'2026-04-03',ret:'2026-04-06',travellers:'2',budget:'R5 000',service:'Holiday Package',purpose:'Family',source:'Website AI Assistant',status:'Quote Sent',value:9000,notes:'[02 Apr] Sent Durban package. Awaiting reply.',assignee:'Hlengiwe Vilakazi',created_at:new Date(Date.now()-86400000*2).toISOString()},
+  {id:'s2',name:'David Reddy',phone:'+27 71 220 8841',email:'d.reddy@work.co.za',from:'Cape Town',to:'Johannesburg',depart:'2026-03-28',ret:'',travellers:'1',budget:'R3 500',service:'Flights',purpose:'Business',source:'Flight Quote Form',status:'Negotiating',value:4500,notes:'',created_at:new Date(Date.now()-86400000).toISOString()},
+  {id:'s3',name:'Lerato & Sipho',phone:'+27 60 778 9912',email:'lerato@mail.com',from:'Johannesburg',to:'Mauritius',depart:'2026-06-12',ret:'2026-06-19',travellers:'2',budget:'R45 000',service:'Holiday Package',purpose:'Honeymoon',source:'Website AI Assistant',status:'Confirmed',value:48000,notes:'Deposit received.',assignee:'Lamla Shasha',created_at:new Date(Date.now()-86400000*5).toISOString()},
+  {id:'s4',name:'Thabo M.',phone:'+27 83 110 2030',email:'',from:'Durban',to:'Cape Town',depart:'2026-05-01',ret:'2026-05-04',travellers:'3',budget:'R12 000',service:'Holiday Package',purpose:'Holiday',source:'Hero Search',status:'New',value:11400,notes:'',created_at:new Date(Date.now()-3600000*4).toISOString()},
+  {id:'s5',name:'Aisha K.',phone:'+27 79 445 6677',email:'aisha@mail.com',from:'Johannesburg',to:'Dubai',depart:'2026-07-10',ret:'2026-07-17',travellers:'4',budget:'R90 000',service:'Flights',purpose:'Family',source:'Website AI Assistant',status:'Contacted',value:57600,notes:'',created_at:new Date(Date.now()-86400000*3).toISOString()},
+];
+
+// ═══════════════════════════════════════════════════════
+//  SMALL REUSABLE COMPONENTS
+// ═══════════════════════════════════════════════════════
+function WaIco(p){var s=p.s||20;return h('svg',{width:s,height:s,viewBox:'0 0 24 24',fill:'currentColor'},h('path',{d:'M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2Zm5.8 14.2c-.2.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1-.4-.1-1-.3-1.7-.6-3-1.3-5-4.4-5.1-4.6-.2-.2-1.3-1.7-1.3-3.2s.8-2.3 1.1-2.6c.3-.3.6-.4.8-.4h.6c.2 0 .4 0 .6.5l.9 2c.1.2.1.4 0 .5l-.4.6c-.2.2-.3.4-.1.7.2.3.9 1.4 1.9 2.3 1.3 1.1 2.3 1.5 2.6 1.6.3.1.5.1.7-.1l.8-.9c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.5.4.1.2.1.9-.1 1.5Z'}));}
+function ChatIco(p){var s=p.s||20;return h('svg',{width:s,height:s,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:'2',strokeLinecap:'round',strokeLinejoin:'round'},h('path',{d:'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z'}));}
+function LogoMark(){
+  return h('div',{style:{width:38,height:38,borderRadius:11,background:'linear-gradient(140deg,'+C.blue+','+C.navy2+')',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 6px 18px rgba(30,91,186,.4)',border:'1px solid rgba(232,180,74,.3)'}},
+    h('svg',{width:22,height:22,viewBox:'0 0 24 24',fill:'none'},
+      h('path',{d:'M2 14L20 5L14 13L22 12L6 21L9 15Z',fill:C.gold,opacity:'.95'}),
+      h('path',{d:'M2 14L20 5L11 12Z',fill:C.soft})));}
+function Pill(p){var s=p.s;return h('span',{style:{padding:'4px 10px',borderRadius:100,fontSize:11.5,fontWeight:600,color:SCLR[s],background:SCLR[s]+'1e',border:'1px solid '+SCLR[s]+'40'}},s);}
+function Lbl(p){return h('p',{style:{fontSize:11,textTransform:'uppercase',letterSpacing:1.2,color:C.gold,margin:'0 0 8px'}},p.children);}
+function Tog(p){return h('button',{onClick:p.onClick,style:{cursor:'pointer',padding:'9px 16px',borderRadius:100,fontFamily:bd,fontSize:13.5,fontWeight:500,border:'1px solid '+(p.on?C.gold:'rgba(255,255,255,.14)'),background:p.on?'linear-gradient(135deg,'+C.gold+','+C.soft+')':'transparent',color:p.on?C.navy:C.mist}},p.children);}
+function Stat(p){return h('div',{style:Object.assign({},glass(.05),{borderColor:C.line,borderRadius:16,padding:18})},h('div',{style:{fontSize:11,color:C.mist,textTransform:'uppercase',letterSpacing:1}},p.label),h('div',{style:{fontFamily:dp,fontSize:26,fontWeight:600,marginTop:6,color:p.accent||C.cream}},p.v));}
+function Section(p){
+  return h('section',{style:{padding:'44px 20px'}},
+    h('div',{style:{maxWidth:1240,margin:'0 auto'}},
+      h('div',{style:{marginBottom:26}},
+        p.eyebrow&&h('p',{style:{fontSize:11.5,textTransform:'uppercase',letterSpacing:2,color:C.gold,margin:'0 0 10px'}},p.eyebrow),
+        h('h2',{style:{fontFamily:dp,fontSize:'clamp(24px,4.5vw,38px)',fontWeight:600,margin:0,letterSpacing:'-.01em'}},p.title),
+        p.sub&&h('p',{style:{color:C.mist,fontSize:15.5,maxWidth:600,margin:'12px 0 0',lineHeight:1.6}},p.sub)),
+      p.children));}
+function ModalWrap(p){
+  return h('div',{onClick:p.close,style:{position:'fixed',inset:0,zIndex:100,background:'rgba(4,9,20,.72)',backdropFilter:'blur(6px)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'24px 16px',overflowY:'auto'}},
+    h('div',{onClick:function(e){e.stopPropagation();},style:Object.assign({position:'relative',width:'100%',maxWidth:580,borderRadius:22,padding:28,boxShadow:'0 40px 100px rgba(0,0,0,.6)',margin:'auto'},glass(.1),{background:'rgba(8,18,39,0.97)',borderColor:C.line})},
+      h('button',{onClick:p.close,style:{position:'absolute',top:14,right:16,background:'none',border:'none',color:C.mist,fontSize:26,cursor:'pointer',lineHeight:1,zIndex:2}},'×'),
+      p.children));}
+function FBtn(p){
+  return h('button',{className:'fbtn',onClick:p.onClick,title:p.label,'aria-label':p.label,style:{width:56,height:56,borderRadius:28,border:'none',cursor:'pointer',background:p.bg,color:p.fg,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 10px 30px rgba(0,0,0,.4)'}},p.children);}
+function FF(p){// Form field
+  var base=Object.assign({},IS);
+  return h('label',{style:{display:'flex',flexDirection:'column',gap:6}},
+    h('span',{style:{fontSize:12,color:C.mist}},p.label,p.req&&h('span',{style:{color:C.gold}},' *')),
+    p.type==='select'
+      ?h('select',{value:p.v,onChange:function(e){p.onChange(e.target.value);},style:base},
+          h('option',{value:''},'Select…'),
+          (p.opts||[]).map(function(o){return h('option',{key:o,value:o,style:{color:'#000'}},o);}))
+      :h('input',{value:p.v,onChange:function(e){p.onChange(e.target.value);},type:p.type||'text',style:base}));}
+
+// ═══════════════════════════════════════════════════════
+//  ROOT APP
+// ═══════════════════════════════════════════════════════
+function App(){
+  var rs=useState('home'),route=rs[0],setRoute=rs[1];
+  var ls=useState([]),leads=ls[0],setLeads=ls[1];
+  var us=useState(null),user=us[0],setUser=us[1];
+  var ars=useState(false),authReady=ars[0],setAuthReady=ars[1];
+  var cs=useState(false),chatOpen=cs[0],setChatOpen=cs[1];
+  var fs=useState(null),formCfg=fs[0],setFormCfg=fs[1];
+  var ts=useState(null),toast=ts[0],setToast=ts[1];
+
+  useEffect(function(){
+    // Hide splash once mounted
+    var sp=document.getElementById('splash');
+    if(sp){setTimeout(function(){sp.classList.add('hide');setTimeout(function(){sp.style.display='none';},400);},200);}
+    if(!db){setLeads(SEEDS);setAuthReady(true);return;}
+    db.auth.getSession().then(function(r){setUser(r.data.session?r.data.session.user:null);setAuthReady(true);});
+    var sub=db.auth.onAuthStateChange(function(_,session){setUser(session?session.user:null);});
+    return function(){if(sub&&sub.data&&sub.data.subscription)sub.data.subscription.unsubscribe();};
+  },[]);
+
+  useEffect(function(){
+    if(!db){return;}
+    if(!user){if(!CONFIGURED)setLeads(SEEDS);return;}
+    db.from('leads').select('*').order('created_at',{ascending:false}).then(function(r){if(!r.error)setLeads((r.data||[]).map(norm));});
+    var ch=db.channel('leads-rt').on('postgres_changes',{event:'*',schema:'public',table:'leads'},function(payload){
+      if(payload.eventType==='INSERT')setLeads(function(p){return [norm(payload.new)].concat(p);});
+      else if(payload.eventType==='UPDATE')setLeads(function(p){return p.map(function(l){return l.id===payload.new.id?norm(payload.new):l;});});
+      else if(payload.eventType==='DELETE')setLeads(function(p){return p.filter(function(l){return l.id!==payload.old.id;});});
+    }).subscribe();
+    return function(){db.removeChannel(ch);};
+  },[user]);
+
+  var addLead=useCallback(async function(lead){
+    var row={name:lead.name||null,phone:lead.phone||null,email:lead.email||null,
+      from_city:lead.from||null,to_city:lead.to||null,depart_date:lead.depart||null,
+      return_date:lead.ret||null,travellers:parseInt(lead.travellers)||1,
+      rooms:parseInt(lead.rooms)||1,cabin_class:lead.cabin||null,vehicle_type:lead.vehicle||null,
+      budget:lead.budget||null,service_type:lead.service||null,purpose:lead.purpose||null,
+      source:lead.source||'Website',status:'New',
+      est_value:lead.value||estimateVal(lead,lead.service)||0,notes:'',assigned_to:null};
+    var saved;
+    if(db&&CONFIGURED){
+      var r=await db.from('leads').insert([row]).select().single();
+      if(r.error){saved=Object.assign({},row,{id:uid(),created_at:new Date().toISOString()});setLeads(function(p){return [norm(saved)].concat(p);});}
+      else saved=r.data;
+    } else {saved=Object.assign({},row,{id:uid(),created_at:new Date().toISOString()});setLeads(function(p){return [norm(saved)].concat(p);});}
+    if(EJ_ON&&window.emailjs){
+      try{await emailjs.send(window.EMAILJS_SERVICE_ID,window.EMAILJS_TEMPLATE_ID,{
+        to_email:EMAIL,lead_name:lead.name||'New Lead',lead_phone:lead.phone||'—',lead_email:lead.email||'—',
+        from_city:lead.from||'—',to_city:lead.to||'—',depart_date:lead.depart||'—',return_date:lead.ret||'—',
+        travellers:lead.travellers||'—',budget:lead.budget||'—',service:lead.service||'—',
+        purpose:lead.purpose||'—',source:lead.source||'Website',full_message:buildWA(lead).replace(/\*/g,'')
+      });}catch(e){console.warn('EmailJS:',e);}
+    }
+    flash('Enquiry for '+(lead.name||'new lead')+' saved — team notified');
+    return norm(saved);
+  },[]);
+
+  var updateLead=useCallback(async function(id,patch){
+    var dbp=Object.assign({},patch);
+    if(patch.assignee!==undefined)dbp.assigned_to=patch.assignee;
+    if(patch.value!==undefined)dbp.est_value=patch.value;
+    if(db&&CONFIGURED)await db.from('leads').update(dbp).eq('id',id);
+    setLeads(function(p){return p.map(function(l){return l.id===id?Object.assign({},l,patch):l;});});
+  },[]);
+
+  var removeLead=useCallback(async function(id){
+    if(db&&CONFIGURED)await db.from('leads').delete().eq('id',id);
+    setLeads(function(p){return p.filter(function(l){return l.id!==id;});});
+  },[]);
+
+  function flash(msg){setToast(msg);setTimeout(function(){setToast(null);},4500);}
+  function openForm(cfg){setFormCfg(typeof cfg==='string'?{type:cfg}:cfg);}
+  function go(id){setRoute(id);window.scrollTo(0,0);}
+
+  return h(F,null,
+    !CONFIGURED&&h(SetupBanner,null),
+    h(Nav,{route:route,setRoute:go,onQuote:function(){openForm('flight');},user:user}),
+    route==='home'&&h(HomePage,{setRoute:go,openForm:openForm,openChat:function(){setChatOpen(true);}}),
+    route==='services'&&h(ServicesPage,{openForm:openForm}),
+    route==='admin'&&h(AdminPage,{leads:leads,updateLead:updateLead,removeLead:removeLead,user:user,authReady:authReady}),
+    h(FooterComp,{setRoute:go}),
+    route!=='admin'&&h('div',{style:{position:'fixed',right:18,bottom:18,display:'flex',flexDirection:'column',gap:12,zIndex:60}},
+      h(FBtn,{label:'Chat with us',onClick:function(){setChatOpen(true);},bg:'linear-gradient(135deg,'+C.gold+','+C.soft+')',fg:C.navy},h(ChatIco,null)),
+      h('a',{href:waLink({source:'Float Button'}),target:'_blank',rel:'noreferrer',style:{textDecoration:'none'}},
+        h(FBtn,{label:'WhatsApp',bg:'#25D366',fg:'#fff'},h(WaIco,null)))),
+    chatOpen&&h(ChatBot,{close:function(){setChatOpen(false);},addLead:addLead}),
+    formCfg&&h(EnquiryModal,{cfg:formCfg,close:function(){setFormCfg(null);},addLead:addLead}),
+    toast&&h('div',{style:{position:'fixed',left:'50%',bottom:28,transform:'translateX(-50%)',zIndex:90,padding:'13px 20px',borderRadius:14,fontSize:14,fontWeight:500,boxShadow:'0 20px 50px rgba(0,0,0,.5)',maxWidth:'90vw',textAlign:'center',background:'rgba(30,91,186,.9)',color:C.cream,backdropFilter:'blur(14px)'}},
+      '✓ ',toast));}
+
+function SetupBanner(){
+  return h('div',{style:{background:'linear-gradient(90deg,'+C.blue+','+C.navy2+')',padding:'11px 20px',textAlign:'center',fontSize:13.5,fontWeight:500}},
+    '⚙️ Demo mode — fill in your Supabase keys in the CONFIG section of this file to go live. ',
+    h('a',{href:'https://supabase.com',target:'_blank',rel:'noreferrer',style:{color:C.gold}},'Create free account →'));}
+
+// ═══════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════
+function Nav(p){
+  var ss=useState(false),scrolled=ss[0],setScrolled=ss[1];
+  var ms=useState(false),menu=ms[0],setMenu=ms[1];
+  useEffect(function(){
+    function f(){setScrolled(window.scrollY>24);}
+    window.addEventListener('scroll',f);return function(){window.removeEventListener('scroll',f);};
+  },[]);
+  function NL(np){
+    return h('button',{onClick:function(){p.setRoute(np.id);setMenu(false);},style:{background:'none',border:'none',cursor:'pointer',fontFamily:bd,fontSize:14.5,fontWeight:500,padding:'8px 4px',color:p.route===np.id?C.gold:C.mist,letterSpacing:.2,borderBottom:p.route===np.id?'2px solid '+C.gold:'2px solid transparent'}},np.children);}
+  return h('header',{style:{position:'sticky',top:0,zIndex:70,transition:'all .3s',background:scrolled?'rgba(8,18,39,0.85)':'transparent',backdropFilter:scrolled?'blur(16px)':'none',borderBottom:scrolled?'1px solid '+C.line:'1px solid transparent'}},
+    h('div',{style:{maxWidth:1240,margin:'0 auto',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
+      h('button',{onClick:function(){p.setRoute('home');},style:{background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:10}},
+        h(LogoMark,null),
+        h('div',{style:{textAlign:'left',lineHeight:1}},
+          h('div',{style:{fontFamily:dp,fontSize:18,fontWeight:600,color:C.cream}},'Urban Tickets'),
+          h('div',{style:{fontSize:9,color:C.gold,letterSpacing:2.2,marginTop:3,textTransform:'uppercase'}},'Your Journey Starts Here'))),
+      h('nav',{style:{display:'flex',alignItems:'center',gap:24}},
+        h(NL,{id:'home'},'Home'),h(NL,{id:'services'},'Services'),
+        h(NL,{id:'admin'},p.user?'Dashboard ●':'Dashboard'),
+        h('button',{onClick:p.onQuote,style:BP.sm},'Get Free Quote'))));}
+
+// ═══════════════════════════════════════════════════════
+//  HOME PAGE
+// ═══════════════════════════════════════════════════════
+function HomePage(p){
+  return h('main',null,h(Hero,p),h(Specials,p),h(Destinations,p),h(WhyUs,null),h(Testimonials,null),h(CtaBanner,p));}
+
+function Hero(p){
+  var ts=useState({from:'',to:'',depart:'',ret:'',travellers:'2'}),t=ts[0],setT=ts[1];
+  function s(k){return function(e){setT(function(prev){var n=Object.assign({},prev);n[k]=e.target.value;return n;});};}
+  var fields=[['from','Travelling from','text','e.g. Johannesburg'],['to','Travelling to','text','e.g. Cape Town'],['depart','Departure','date'],['ret','Return','date'],['travellers','Travellers','number']];
+  return h('section',{style:{position:'relative',paddingTop:40,paddingBottom:70,overflow:'hidden'}},
+    h('div',{style:{position:'absolute',inset:0,background:'radial-gradient(900px 500px at 80% -8%,rgba(44,123,229,.28),transparent 60%),radial-gradient(700px 500px at 8% 18%,rgba(232,180,74,.14),transparent 60%),linear-gradient(180deg,'+C.navy2+' 0%,'+C.navy+' 70%)'}}),
+    h('div',{style:{position:'relative',maxWidth:1100,margin:'0 auto',padding:'0 20px',textAlign:'center'}},
+      h('div',{style:{display:'inline-flex',alignItems:'center',gap:8,padding:'7px 15px',borderRadius:100,fontSize:12,color:C.soft,letterSpacing:.4,marginBottom:22,background:'rgba(255,255,255,.06)',border:'1px solid '+C.line}},
+        h('span',{style:{width:6,height:6,borderRadius:6,background:C.gold,display:'inline-block'}}),' Easter Weekend specials now live · book early'),
+      h('h1',{style:{fontFamily:dp,fontWeight:600,lineHeight:1.04,margin:0,fontSize:'clamp(36px,7vw,72px)',letterSpacing:'-.02em'}},
+        'Travel that feels',h('br',null),
+        h('span',{style:{background:'linear-gradient(120deg,'+C.gold+','+C.soft+')',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'}},'handled for you')),
+      h('p',{style:{color:C.mist,fontSize:'clamp(15px,2.4vw,18px)',maxWidth:580,margin:'20px auto 0',lineHeight:1.6}},'Flights, hotels, holiday packages and car rentals — quoted by real South African consultants, tailored to your budget.'),
+      h('div',{style:Object.assign({borderRadius:22,padding:18,marginTop:36,boxShadow:'0 30px 80px rgba(0,0,0,.45)'},glass(.08),{borderColor:C.line})},
+        h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10}},
+          fields.map(function(f){
+            return h('label',{key:f[0],style:{display:'flex',flexDirection:'column',gap:5,textAlign:'left'}},
+              h('span',{style:{fontSize:10.5,textTransform:'uppercase',letterSpacing:1.2,color:C.gold}},f[1]),
+              h('input',{value:t[f[0]],onChange:s(f[0]),type:f[2],placeholder:f[3]||'',style:{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.12)',borderRadius:11,padding:'11px 12px',color:C.cream,fontSize:14,outline:'none',width:'100%'}}));})),
+        h('div',{style:{display:'flex',flexWrap:'wrap',gap:10,marginTop:14,justifyContent:'center'}},
+          h('button',{onClick:function(){p.openForm({type:'flight',prefill:t});},style:BP.pri},'Get Free Quote'),
+          h('a',{href:waLink(Object.assign({},t,{source:'Hero'})),target:'_blank',rel:'noreferrer',style:Object.assign({},BP.ghost,{textDecoration:'none',display:'inline-flex',alignItems:'center',gap:8})},h(WaIco,{s:16}),' WhatsApp Us'),
+          h('button',{onClick:p.openChat,style:Object.assign({},BP.ghost,{display:'inline-flex',alignItems:'center',gap:8})},h(ChatIco,{s:16}),' Travel Assistance'))),
+      h('div',{style:{display:'flex',gap:28,justifyContent:'center',flexWrap:'wrap',marginTop:30,color:C.mist,fontSize:13}},
+        [['12k+','Trips booked'],['4.9★','Client rating'],['24/7','Consultant support']].map(function(a){
+          return h('div',{key:a[1],style:{textAlign:'center'}},h('div',{style:{fontFamily:dp,fontSize:24,color:C.cream,fontWeight:600}},a[0]),h('div',{style:{letterSpacing:.3}},a[1]));}))));
+}
+
+var SPECIALS=[{city:'Durban',tag:'Hotel + Transfers',price:2499,grad:'linear-gradient(135deg,#0e7490,#155e75)',icon:'🌊'},{city:'Johannesburg',tag:'Hotel + Transfers',price:3299,grad:'linear-gradient(135deg,#92400e,#b45309)',icon:'🏙️'},{city:'Cape Town',tag:'Hotel + Transfers',price:3799,grad:'linear-gradient(135deg,#1e40af,#1e3a8a)',icon:'⛰️'}];
+function Specials(p){
+  return h(Section,{eyebrow:'Easter Weekend Specials',title:'Limited discount offers',sub:'Hand-picked packages with hotel and transfers. Book early.'},
+    h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:18}},
+      SPECIALS.map(function(s){
+        return h('div',{key:s.city,className:'lift',style:Object.assign({},glass(.05),{borderColor:C.line,borderRadius:20,overflow:'hidden'})},
+          h('div',{style:{height:160,background:s.grad,position:'relative',display:'flex',alignItems:'flex-end',padding:16}},
+            h('div',{style:{position:'absolute',inset:0,background:'linear-gradient(180deg,transparent,rgba(8,18,39,.55))'}}),
+            h('span',{style:{position:'absolute',top:14,right:14,fontSize:26}},s.icon),
+            h('div',{style:{position:'relative'}},h('div',{style:{fontFamily:dp,fontSize:22,fontWeight:600}},s.city),h('div',{style:{fontSize:12,color:C.soft}},s.tag))),
+          h('div',{style:{padding:'16px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
+            h('div',null,h('div',{style:{fontSize:11,color:C.mist}},'From'),h('div',{style:{fontFamily:dp,fontSize:24,fontWeight:600,color:C.gold}},money(s.price),h('span',{style:{fontSize:12,color:C.mist}},'/pp sharing'))),
+            h('button',{onClick:function(){p.openForm({type:'package',prefill:{to:s.city,budget:money(s.price)}});},style:BP.sm},'Enquire')));})));}
+
+var DESTS=[['Mauritius','🏝️','Honeymoon'],['Zanzibar','🐚','Beach'],['Dubai','🕌','Luxury'],['Victoria Falls','💦','Adventure'],['Bali','🌺','Escape'],['Maldives','🌴','Romance']];
+function Destinations(p){
+  return h(Section,{eyebrow:'Popular Destinations',title:'Where would you like to wake up?',sub:"International favourites our clients keep coming back to."},
+    h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:12}},
+      DESTS.map(function(d){
+        return h('button',{key:d[0],className:'lift',onClick:function(){p.openForm({type:'package',prefill:{to:d[0]}});},style:Object.assign({},glass(.05),{borderColor:C.line,borderRadius:16,padding:18,display:'flex',alignItems:'center',gap:14,width:'100%',cursor:'pointer',textAlign:'left'})},
+          h('span',{style:{fontSize:26}},d[1]),
+          h('div',null,h('div',{style:{fontFamily:dp,fontSize:18,fontWeight:600}},d[0]),h('div',{style:{fontSize:12,color:C.gold}},d[2]+' · tap to enquire')));})));}
+
+function WhyUs(){
+  var items=[['👥','Real human consultants','Three dedicated agents quote and look after every booking personally.'],['🎯','Budget-first quoting','Tell us your number. We build the trip around it.'],['🧳','Everything in one place','Flights, hotels, transfers and packages — quoted together.'],['🇿🇦','Local and reachable','South African team you can WhatsApp directly before and during your trip.']];
+  return h(Section,{eyebrow:'Why Urban Tickets',title:'Booking travel, minus the stress'},
+    h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:16}},
+      items.map(function(i){
+        return h('div',{key:i[1],style:Object.assign({},glass(.045),{borderColor:C.line,borderRadius:18,padding:22,display:'flex',gap:14})},
+          h('div',{style:{fontSize:24,lineHeight:1}},i[0]),
+          h('div',null,h('div',{style:{fontFamily:dp,fontSize:18,fontWeight:600,marginBottom:6}},i[1]),h('div',{style:{color:C.mist,fontSize:14.5,lineHeight:1.6}},i[2])));}))); }
+
+function Testimonials(){
+  var items=[['The Durban package was sorted in two WhatsApp messages. Exactly as quoted.','Nomsa M.','Soweto'],['Got us to Mauritius for our honeymoon under budget. Hlengiwe handled everything.','Sipho & Lerato','Pretoria'],['Last-minute Cape Town work trip. Quote came back in under an hour.','David R.','Sandton']];
+  return h(Section,{eyebrow:'Client Stories',title:'Travellers who trusted us'},
+    h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:16}},
+      items.map(function(i){
+        return h('div',{key:i[1],style:Object.assign({},glass(.045),{borderColor:C.line,borderRadius:18,padding:22})},
+          h('div',{style:{color:C.gold,fontSize:18,marginBottom:10}},'★★★★★'),
+          h('p',{style:{fontSize:15,lineHeight:1.6,color:C.cream,margin:0}},'"'+i[0]+'"'),
+          h('div',{style:{marginTop:14,fontSize:13,color:C.mist}},h('b',{style:{color:C.cream}},i[1]),' · '+i[2]));}))); }
+
+function CtaBanner(p){
+  return h('section',{style:{padding:'0 20px 70px'}},
+    h('div',{style:{maxWidth:1000,margin:'0 auto',borderRadius:26,padding:'44px 28px',textAlign:'center',position:'relative',overflow:'hidden',background:'linear-gradient(135deg,'+C.navy2+','+C.blue+')',border:'1px solid '+C.line,boxShadow:'0 30px 70px rgba(0,0,0,.4)'}},
+      h('div',{style:{position:'absolute',inset:0,opacity:.18,background:'radial-gradient(400px 200px at 80% 0%,rgba(243,208,138,.7),transparent)'}}),
+      h('h2',{style:{position:'relative',fontFamily:dp,fontSize:'clamp(26px,5vw,38px)',fontWeight:600,margin:0}},'Ready when you are'),
+      h('p',{style:{position:'relative',color:'#D7E2F5',maxWidth:500,margin:'12px auto 24px',fontSize:16}},'Free, no-obligation quote in minutes. A consultant replies the same day.'),
+      h('div',{style:{position:'relative',display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}},
+        h('button',{onClick:function(){p.openForm('flight');},style:BP.pri},'Get Free Quote'),
+        h('button',{onClick:p.openChat,style:BP.ghost},'Chat with our AI consultant'))));}
+
+// ═══════════════════════════════════════════════════════
+//  SERVICES PAGE
+// ═══════════════════════════════════════════════════════
+function ServicesPage(p){
+  var blocks=[['Flights','✈️','flight',['Domestic flights','International flights','Group bookings']],['Hotels','🏨','hotel',['Budget hotels','Luxury hotels','Resorts']],['Car Rentals','🚗','car',['Economy vehicles','Business vehicles','SUVs']],['Holiday Packages','🌴','package',['Family packages','Honeymoon packages','Corporate travel','Student travel']]];
+  return h('main',{style:{paddingTop:30}},
+    h(Section,{eyebrow:'What we do',title:'Services built around your trip',sub:'Each enquiry goes to a real consultant instantly — free and no obligation.'},
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:18}},
+        blocks.map(function(b){
+          return h('div',{key:b[0],style:Object.assign({},glass(.05),{borderColor:C.line,borderRadius:20,padding:24})},
+            h('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:14}},h('span',{style:{fontSize:26}},b[1]),h('h3',{style:{fontFamily:dp,fontSize:22,fontWeight:600,margin:0}},b[0])),
+            h('ul',{style:{listStyle:'none',padding:0,margin:'0 0 18px',display:'flex',flexDirection:'column',gap:9}},
+              b[3].map(function(i){return h('li',{key:i,style:{display:'flex',alignItems:'center',gap:10,color:C.mist,fontSize:14.5}},h('span',{style:{color:C.gold}},'✓'),' '+i);})),
+            h('button',{onClick:function(){p.openForm({type:b[2]});},style:BP.sm},'Request '+b[0]+' quote'));}))));
+}
+
+// ═══════════════════════════════════════════════════════
+//  ENQUIRY FORMS
+// ═══════════════════════════════════════════════════════
+var FORMS={
+  flight:{title:'Flight Quote',icon:'✈️',service:'Flights',fields:[['from','Departure city','text',true],['to','Destination city','text',true],['depart','Departure date','date',true],['ret','Return date','date',false],['travellers','Passengers','number',true],['cabin','Cabin class','select',false,['Economy','Premium Economy','Business','First']],['budget','Budget (per person)','text',false]]},
+  hotel:{title:'Hotel Quote',icon:'🏨',service:'Hotels',fields:[['to','Destination','text',true],['depart','Check-in','date',true],['ret','Check-out','date',true],['rooms','Rooms','number',true],['travellers','Guests','number',true],['budget','Budget/night','text',false]]},
+  car:{title:'Car Rental Quote',icon:'🚗',service:'Car Rental',fields:[['from','Pickup location','text',true],['depart','Pickup date','date',true],['ret','Return date','date',true],['vehicle','Vehicle type','select',true,['Economy','Business','SUV','Minibus']],['budget','Budget','text',false]]},
+  package:{title:'Holiday Package Quote',icon:'🌴',service:'Holiday Package',fields:[['to','Destination','text',true],['depart','Travel date','date',true],['ret','Return date','date',false],['travellers','Travellers','number',true],['budget','Total budget','text',false],['purpose','Occasion / interests','text',false]]}
+};
+function EnquiryModal(p){
+  var def=FORMS[p.cfg.type]||FORMS.flight;
+  var ds=useState(Object.assign({travellers:'2',rooms:'1'},p.cfg.prefill||{})),data=ds[0],setData=ds[1];
+  var done_s=useState(null),done=done_s[0],setDone=done_s[1];
+  var ls=useState(false),loading=ls[0],setLoading=ls[1];
+  function set(k,v){setData(function(prev){var n=Object.assign({},prev);n[k]=v;return n;});}
+  async function submit(){
+    var miss=def.fields.filter(function(f){return f[3]&&!data[f[0]];});
+    if(miss.length){alert('Please fill in: '+miss.map(function(m){return m[1];}).join(', '));return;}
+    if(!data.name||!data.phone){alert('Please add your name and mobile number.');return;}
+    setLoading(true);
+    var saved=await p.addLead(Object.assign({},data,{service:def.service,source:def.title+' Form',value:estimateVal(data,def.service)}));
+    setDone(saved);setLoading(false);}
+  return h(ModalWrap,{close:p.close},
+    !done?h(F,null,
+      h('div',{style:{marginBottom:18}},h('div',{style:{fontSize:26,marginBottom:6}},def.icon),h('h3',{style:{fontFamily:dp,fontSize:24,fontWeight:600,margin:0}},def.title),h('p',{style:{color:C.mist,fontSize:13.5,margin:'6px 0 0'}},'Free, no-obligation. Consultant replies same day.')),
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12}},
+        def.fields.map(function(f){return h(FF,{key:f[0],label:f[1],req:f[3],type:f[2],opts:f[4],v:data[f[0]]||'',onChange:function(v){set(f[0],v);}});})),
+      h('div',{style:{height:1,background:C.line,margin:'18px 0'}}),
+      h('p',{style:{fontSize:11,textTransform:'uppercase',letterSpacing:1.4,color:C.gold,margin:'0 0 10px'}},'Your contact details'),
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12}},
+        h(FF,{label:'Full name',req:true,v:data.name||'',onChange:function(v){set('name',v);}}),
+        h(FF,{label:'Mobile number',req:true,v:data.phone||'',onChange:function(v){set('phone',v);}}),
+        h(FF,{label:'Email address',type:'email',v:data.email||'',onChange:function(v){set('email',v);}})),
+      h('button',{onClick:submit,disabled:loading,style:Object.assign({},BP.pri,{width:'100%',marginTop:20,padding:'14px',opacity:loading?.7:1})},loading?'Sending…':'Send my enquiry'))
+    :h(SuccessView,{lead:done,close:p.close}));}
+
+function SuccessView(p){
+  return h('div',{style:{textAlign:'center',padding:'8px 4px'}},
+    h('div',{style:{width:64,height:64,borderRadius:32,margin:'0 auto 16px',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,'+C.gold+','+C.soft+')',color:C.navy,fontSize:28,fontWeight:700}},'✓'),
+    h('h3',{style:{fontFamily:dp,fontSize:24,fontWeight:600,margin:'0 0 8px'}},'Enquiry sent, '+(p.lead.name||'').split(' ')[0]+'!'),
+    h('p',{style:{color:C.mist,fontSize:14.5,lineHeight:1.6,margin:'0 0 20px'}},'Saved'+(CONFIGURED?' to Supabase':'')+'. Send the full details straight to our team on WhatsApp:'),
+    h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',justifyContent:'center'}},
+      h('a',{href:waLink(p.lead),target:'_blank',rel:'noreferrer',style:Object.assign({},BP.pri,{textDecoration:'none',display:'inline-flex',gap:8,alignItems:'center'})},h(WaIco,{s:15}),' WhatsApp the team'),
+      h('a',{href:emailLink(p.lead),style:Object.assign({},BP.ghost,{textDecoration:'none'})},'Email'),
+      h('button',{onClick:p.close,style:BP.ghost},'Done')));}
+
+// ═══════════════════════════════════════════════════════
+//  AI CHATBOT
+// ═══════════════════════════════════════════════════════
+var STEPS=[
+  {k:'from',q:'Hi 👋 I\'m Aya, your Urban Tickets consultant. Which city are you travelling from?'},
+  {k:'to',q:'And where would you like to go?'},
+  {k:'depart',q:'When would you like to depart? (date or month is fine)'},
+  {k:'ret',q:'And your return date? Type "one way" for a single trip.'},
+  {k:'travellers',q:'How many people are travelling in total?'},
+  {k:'budget',q:'Do you have a budget in mind? A range is perfectly fine.'},
+  {k:'service',q:'What should I quote for you?',chips:['Flight only','Flight + Hotel','Hotel only','Full package','Car rental too']},
+  {k:'purpose',q:"What's the occasion?",chips:['Holiday','Honeymoon','Family','Business','Student','Other']},
+  {k:'name',q:'Almost done! What is your full name?'},
+  {k:'email',q:'Best email address for the quote?'},
+  {k:'phone',q:'And a mobile number our consultant can WhatsApp you on?'},
+];
+function ChatBot(p){
+  var ms=useState([{who:'bot',text:'Tap "Let\'s go" and I\'ll put together your quote in 60 seconds.'}]),msgs=ms[0],setMsgs=ms[1];
+  var ss=useState(-1),step=ss[0],setStep=ss[1];
+  var ds=useState({}),data=ds[0],setData=ds[1];
+  var is=useState(''),inp=is[0],setInp=is[1];
+  var ls=useState(null),lead=ls[0],setLead=ls[1];
+  var scroller=useRef(null);
+  useEffect(function(){if(scroller.current)scroller.current.scrollTo(0,scroller.current.scrollHeight);},[msgs]);
+  function say(text,delay){delay=delay||400;setTimeout(function(){setMsgs(function(m){return m.concat([{who:'bot',text:text}]);});},delay);}
+  function begin(){setStep(0);say(STEPS[0].q,200);}
+  async function next(value){
+    var cur=STEPS[step];
+    setMsgs(function(m){return m.concat([{who:'me',text:value}]);});
+    var nd=Object.assign({},data);nd[cur.k]=value;
+    setData(nd);setInp('');
+    var nxt=step+1;
+    if(nxt<STEPS.length){setStep(nxt);say(STEPS[nxt].q,440);}
+    else{
+      setStep(STEPS.length);say('Perfect — pulling your enquiry together… ✨',360);
+      setTimeout(async function(){
+        var saved=await p.addLead(Object.assign({},nd,{source:'Website AI Assistant',value:estimateVal(nd,nd.service)}));
+        setLead(saved);
+        setMsgs(function(m){return m.concat([{who:'bot',text:"Here's your summary:",summary:saved}]);});
+      },1200);}
+  }
+  var cur=step>=0&&step<STEPS.length?STEPS[step]:null;
+  return h('div',{style:{position:'fixed',inset:0,zIndex:95,pointerEvents:'none'}},
+    h('div',{style:Object.assign({pointerEvents:'auto',position:'fixed',right:18,bottom:18,width:380,maxWidth:'calc(100vw - 16px)',height:600,maxHeight:'calc(100vh - 36px)',borderRadius:20,display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 30px 80px rgba(0,0,0,.6)'},glass(.1),{background:'rgba(8,18,39,0.94)',borderColor:C.line})},
+      h('div',{style:{padding:'14px 16px',borderBottom:'1px solid '+C.line,display:'flex',alignItems:'center',gap:10}},
+        h('div',{style:{width:38,height:38,borderRadius:20,background:'linear-gradient(135deg,'+C.gold+','+C.soft+')',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:C.navy,fontSize:16}},'A'),
+        h('div',{style:{flex:1}},h('div',{style:{fontWeight:600,fontSize:15}},'Aya · AI Consultant'),h('div',{style:{fontSize:11,color:C.green}},'● Online')),
+        h('button',{onClick:p.close,style:{background:'none',border:'none',color:C.mist,fontSize:24,cursor:'pointer',lineHeight:1}},'×')),
+      h('div',{ref:scroller,style:{flex:1,overflowY:'auto',padding:16,display:'flex',flexDirection:'column',gap:10}},
+        msgs.map(function(m,i){
+          return h('div',{key:i,style:{alignSelf:m.who==='me'?'flex-end':'flex-start',maxWidth:'86%'}},
+            h('div',{style:{padding:'10px 14px',borderRadius:16,fontSize:14,lineHeight:1.5,background:m.who==='me'?'linear-gradient(135deg,'+C.blue+','+C.bright+')':'rgba(255,255,255,.07)',color:C.cream,borderBottomRightRadius:m.who==='me'?4:16,borderBottomLeftRadius:m.who==='me'?16:4}},m.text),
+            m.summary&&h(ChatSum,{lead:m.summary}));}),
+        step===-1&&h('button',{onClick:begin,style:Object.assign({},BP.pri,{alignSelf:'flex-start',marginTop:4})},'"Let\'s go" →'),
+        cur&&cur.chips&&h('div',{style:{display:'flex',flexWrap:'wrap',gap:8,marginTop:2}},
+          cur.chips.map(function(o){return h('button',{key:o,onClick:function(){next(o);},style:BP.chip},o);})),
+        lead&&h('div',null)),
+      cur&&!cur.chips&&h('div',{style:{padding:12,borderTop:'1px solid '+C.line,display:'flex',gap:8}},
+        h('input',{value:inp,onChange:function(e){setInp(e.target.value);},autoFocus:true,onKeyDown:function(e){if(e.key==='Enter'&&inp.trim())next(inp.trim());},placeholder:'Type your answer…',style:Object.assign({},IS,{flex:1})}),
+        h('button',{onClick:function(){if(inp.trim())next(inp.trim());},style:Object.assign({},BP.pri,{padding:'0 16px'})},'→')),
+      lead&&h('div',{style:{padding:12,borderTop:'1px solid '+C.line,display:'flex',gap:8}},
+        h('a',{href:waLink(lead),target:'_blank',rel:'noreferrer',style:Object.assign({},BP.pri,{flex:1,textAlign:'center',textDecoration:'none',display:'inline-flex',justifyContent:'center',gap:8,alignItems:'center'})},h(WaIco,{s:15}),' WhatsApp'),
+        h('a',{href:emailLink(lead),style:Object.assign({},BP.ghost,{textDecoration:'none'})},'Email'))));}
+
+function ChatSum(p){
+  var L=p.lead;
+  var rows=[['From',fv(L,'from','from_city')],['To',fv(L,'to','to_city')],['Depart',fv(L,'depart','depart_date')],['Return',fv(L,'ret','return_date')],['Travellers',L.travellers],['Budget',L.budget],['Service',fv(L,'service','service_type')],['Purpose',L.purpose]].filter(function(r){return r[1];});
+  return h('div',{style:Object.assign({marginTop:8},glass(.05),{borderColor:C.line,borderRadius:14,padding:14})},
+    h('div',{style:{fontFamily:dp,fontWeight:600,fontSize:14,color:C.gold,marginBottom:8}},'Your Enquiry Summary'),
+    h('div',{style:{display:'grid',gridTemplateColumns:'auto 1fr',gap:'5px 12px',fontSize:13}},
+      rows.map(function(r){return h(F,{key:r[0]},h('span',{style:{color:C.mist}},r[0]),h('span',{style:{color:C.cream,fontWeight:500}},r[1]));})),
+    h('div',{style:{marginTop:9,fontSize:11.5,color:C.mist,lineHeight:1.5}},'✓ Saved'+(CONFIGURED?' to Supabase':'')+(EJ_ON?', email sent':''),' · A consultant will be in touch shortly.'));}
+
+// ═══════════════════════════════════════════════════════
+//  ADMIN DASHBOARD
+// ═══════════════════════════════════════════════════════
+function AdminPage(p){
+  var es=useState(''),email=es[0],setEmail=es[1];
+  var ps=useState(''),password=ps[0],setPassword=ps[1];
+  var errs=useState(''),err=errs[0],setErr=errs[1];
+  var lds=useState(false),loading=lds[0],setLoading=lds[1];
+  var qs=useState(''),q=qs[0],setQ=qs[1];
+  var fls=useState('All'),filter=fls[0],setFilter=fls[1];
+  var vs=useState('pipeline'),view=vs[0],setView=vs[1];
+  var sels=useState(null),selected=sels[0],setSelected=sels[1];
+  async function signIn(){
+    if(!db){setErr('Supabase not configured. Fill in your keys in the CONFIG section.');return;}
+    setLoading(true);setErr('');
+    var r=await db.auth.signInWithPassword({email:email,password:password});
+    if(r.error)setErr(r.error.message);
+    setLoading(false);}
+  async function signOut(){if(db)await db.auth.signOut();}
+  if(!p.authReady)return h('div',{style:{minHeight:'60vh',display:'flex',alignItems:'center',justifyContent:'center',color:C.mist}},'Loading…');
+  if(!p.user){
+    return h('main',{style:{minHeight:'70vh',display:'flex',alignItems:'center',justifyContent:'center',padding:20}},
+      h('div',{style:Object.assign({},glass(.06),{borderColor:C.line,borderRadius:22,padding:32,maxWidth:380,width:'100%',textAlign:'center'})},
+        h(LogoMark,null),
+        h('h2',{style:{fontFamily:dp,fontSize:24,fontWeight:600,margin:'14px 0 4px'}},'Admin Dashboard'),
+        h('p',{style:{color:C.mist,fontSize:13.5,margin:'0 0 18px'}},CONFIGURED?'Sign in with your Supabase admin account.':'Demo mode — configure Supabase to enable real login.'),
+        h('input',{value:email,onChange:function(e){setEmail(e.target.value);},type:'email',placeholder:'Admin email',style:Object.assign({},IS,{marginBottom:10})}),
+        h('input',{value:password,onChange:function(e){setPassword(e.target.value);},type:'password',placeholder:'Password',onKeyDown:function(e){if(e.key==='Enter')signIn();},style:Object.assign({},IS,{marginBottom:14})}),
+        err&&h('div',{style:{color:'#ff8080',fontSize:12.5,marginBottom:12}},err),
+        h('button',{onClick:signIn,disabled:loading,style:Object.assign({},BP.pri,{width:'100%'})},loading?'Signing in…':'Sign in')));}
+  var filtered=p.leads.filter(function(l){
+    var mq=!q||[l.name,l.email,l.phone,l.from,l.to,l.service,l.from_city,l.to_city,l.service_type].join(' ').toLowerCase().includes(q.toLowerCase());
+    var mf=filter==='All'||l.status===filter;return mq&&mf;});
+  var stats=useMemo(function(){
+    var total=p.leads.length,conf=p.leads.filter(function(l){return l.status==='Confirmed';});
+    var rev=conf.reduce(function(s,l){return s+(l.value||l.est_value||0);},0);
+    var pipe=p.leads.filter(function(l){return !['Confirmed','Lost'].includes(l.status);}).reduce(function(s,l){return s+(l.value||l.est_value||0);},0);
+    var conv=total?Math.round((conf.length/total)*100):0,bySrc={};
+    p.leads.forEach(function(l){var k=l.source||'Other';bySrc[k]=(bySrc[k]||0)+1;});
+    return{total:total,confirmed:conf.length,rev:rev,pipe:pipe,conv:conv,bySrc:bySrc};},[p.leads]);
+  return h('main',{style:{paddingTop:24,paddingBottom:60}},
+    h('div',{style:{maxWidth:1240,margin:'0 auto',padding:'0 20px'}},
+      h('div',{style:{display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'space-between',gap:12,marginBottom:22}},
+        h('div',null,h('h1',{style:{fontFamily:dp,fontSize:28,fontWeight:600,margin:0}},'Lead Dashboard'),h('p',{style:{color:C.mist,fontSize:13,margin:'4px 0 0'}},p.leads.length+' leads · '+(CONFIGURED?'live Supabase':'demo mode')+(p.user&&p.user.email?' · '+p.user.email:''))),
+        h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
+          h(Tog,{on:view==='pipeline',onClick:function(){setView('pipeline');}},'Pipeline'),
+          h(Tog,{on:view==='table',onClick:function(){setView('table');}},'All leads'),
+          h('button',{onClick:signOut,style:Object.assign({},BP.ghost,{fontSize:13,padding:'9px 14px'})},'Sign out'))),
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12,marginBottom:22}},
+        h(Stat,{label:'Total leads',v:stats.total}),h(Stat,{label:'Confirmed',v:stats.confirmed,accent:C.green}),
+        h(Stat,{label:'Conversion',v:stats.conv+'%',accent:C.gold}),h(Stat,{label:'Confirmed revenue',v:money(stats.rev),accent:C.gold})),
+      h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',marginBottom:18}},
+        h('input',{value:q,onChange:function(e){setQ(e.target.value);},placeholder:'Search name, route, email…',style:Object.assign({},IS,{flex:1,minWidth:200})}),
+        h('select',{value:filter,onChange:function(e){setFilter(e.target.value);},style:Object.assign({},IS,{minWidth:140})},
+          ['All'].concat(STATUSES).map(function(s){return h('option',{key:s,style:{color:'#000'}},s);}))),
+      view==='pipeline'?h(Pipeline,{leads:filtered,onPick:setSelected}):h(LeadTable,{leads:filtered,onPick:setSelected}),
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:16,marginTop:24}},
+        h('div',{style:Object.assign({},glass(.045),{borderColor:C.line,borderRadius:18,padding:20})},
+          h(Lbl,null,'Open pipeline value'),h('div',{style:{fontFamily:dp,fontSize:32,fontWeight:600}},money(stats.pipe)),
+          h('p',{style:{fontSize:13,color:C.mist,margin:'4px 0 0'}},'Estimated value of leads not yet won or lost.')),
+        h('div',{style:Object.assign({},glass(.045),{borderColor:C.line,borderRadius:18,padding:20})},
+          h(Lbl,null,'Lead sources'),
+          Object.entries(stats.bySrc).sort(function(a,b){return b[1]-a[1];}).map(function(e){
+            return h('div',{key:e[0],style:{display:'flex',alignItems:'center',gap:10,marginBottom:9}},
+              h('div',{style:{flex:1,fontSize:13,color:C.cream,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},e[0]),
+              h('div',{style:{width:100,height:6,background:'rgba(255,255,255,.08)',borderRadius:5,overflow:'hidden'}},
+                h('div',{style:{width:(e[1]/stats.total*100)+'%',height:'100%',background:'linear-gradient(90deg,'+C.blue+','+C.gold+')'}})),
+              h('div',{style:{width:22,textAlign:'right',fontSize:12,color:C.mist}},e[1]));})))),
+    selected&&h(LeadDrawer,{lead:selected,close:function(){setSelected(null);},updateLead:p.updateLead,removeLead:p.removeLead}));}
+
+function Pipeline(p){
+  var cols=['New','Contacted','Quote Sent','Negotiating','Confirmed'];
+  return h('div',{style:{display:'flex',gap:12,overflowX:'auto',paddingBottom:8}},
+    cols.map(function(c){
+      var items=p.leads.filter(function(l){return l.status===c;});
+      return h('div',{key:c,style:{minWidth:228,flex:'1 0 228px'}},
+        h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}},
+          h('div',{style:{display:'flex',alignItems:'center',gap:7,fontSize:13,fontWeight:600}},h('span',{style:{width:8,height:8,borderRadius:5,background:SCLR[c],display:'inline-block'}}),c),
+          h('span',{style:{fontSize:12,color:C.mist}},items.length)),
+        h('div',{style:{display:'flex',flexDirection:'column',gap:9,minHeight:60}},
+          items.map(function(l){
+            return h('button',{key:l.id,className:'lift',onClick:function(){p.onPick(l);},style:Object.assign({},glass(.05),{borderColor:C.line,borderRadius:13,padding:13,textAlign:'left',cursor:'pointer',width:'100%'})},
+              h('div',{style:{fontWeight:600,fontSize:14}},l.name||'Unnamed'),
+              h('div',{style:{fontSize:12,color:C.mist,marginTop:3}},(l.from||l.from_city||'—')+' → '+(l.to||l.to_city||'—')),
+              h('div',{style:{display:'flex',justifyContent:'space-between',marginTop:8,fontSize:11.5}},
+                h('span',{style:{color:C.gold}},l.service||l.service_type||'General'),
+                h('span',{style:{color:C.mist}},(l.value||l.est_value)?money(l.value||l.est_value):'')));}),
+          !items.length&&h('div',{style:{fontSize:12,color:C.mist,opacity:.5,padding:10,textAlign:'center'}},'No leads')));}));}
+
+function LeadTable(p){
+  return h('div',{style:Object.assign({},glass(.04),{borderColor:C.line,borderRadius:16,overflow:'hidden'})},
+    h('div',{style:{overflowX:'auto'}},
+      h('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:13.5,minWidth:600}},
+        h('thead',null,h('tr',{style:{textAlign:'left',color:C.gold,fontSize:11,textTransform:'uppercase',letterSpacing:1}},
+          ['Name','Route','Service','Status','Value','Date'].map(function(h_){return h('th',{key:h_,style:{padding:'12px 14px',borderBottom:'1px solid '+C.line}},h_);}))),
+        h('tbody',null,
+          p.leads.map(function(l){
+            return h('tr',{key:l.id,className:'rhover',onClick:function(){p.onPick(l);},style:{borderBottom:'1px solid rgba(255,255,255,.05)'}},
+              h('td',{style:{padding:'12px 14px'}},h('div',{style:{fontWeight:600}},l.name||'—'),h('div',{style:{fontSize:11,color:C.mist}},l.phone)),
+              h('td',{style:{padding:'12px 14px',color:C.mist}},(l.from||l.from_city||'—')+' → '+(l.to||l.to_city||'—')),
+              h('td',{style:{padding:'12px 14px'}},l.service||l.service_type||'—'),
+              h('td',{style:{padding:'12px 14px'}},h(Pill,{s:l.status||'New'})),
+              h('td',{style:{padding:'12px 14px',color:C.gold}},(l.value||l.est_value)?money(l.value||l.est_value):'—'),
+              h('td',{style:{padding:'12px 14px',color:C.mist,fontSize:12}},new Date(l.created_at).toLocaleDateString('en-ZA')));}),
+          !p.leads.length&&h('tr',null,h('td',{colSpan:6,style:{padding:30,textAlign:'center',color:C.mist}},'No leads match your search.'))))));}
+
+function LeadDrawer(p){
+  var L=p.lead;
+  var ns=useState(''),note=ns[0],setNote=ns[1];
+  var vs=useState(L.value||L.est_value||''),val=vs[0],setVal=vs[1];
+  return h('div',{onClick:p.close,style:{position:'fixed',inset:0,zIndex:100,background:'rgba(4,9,20,.6)',backdropFilter:'blur(4px)',display:'flex',justifyContent:'flex-end'}},
+    h('div',{onClick:function(e){e.stopPropagation();},style:{width:440,maxWidth:'92vw',height:'100%',overflowY:'auto',padding:24,background:'rgba(8,18,39,0.98)',borderLeft:'1px solid '+C.line}},
+      h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16}},
+        h('div',null,h('h3',{style:{fontFamily:dp,fontSize:22,fontWeight:600,margin:0}},L.name||'Lead'),h('div',{style:{color:C.mist,fontSize:13,marginTop:3}},L.phone+(L.email?' · '+L.email:''))),
+        h('button',{onClick:p.close,style:{background:'none',border:'none',color:C.mist,fontSize:26,cursor:'pointer'}},'×')),
+      h('div',{style:{display:'grid',gridTemplateColumns:'auto 1fr',gap:'8px 14px',fontSize:13.5,marginBottom:18}},
+        [['Route',(L.from||L.from_city||'—')+' → '+(L.to||L.to_city||'—')],
+         ['Dates',(L.depart||L.depart_date||'—')+((L.ret||L.return_date)?' → '+(L.ret||L.return_date):'')],
+         ['Travellers',L.travellers],['Budget',L.budget],['Service',L.service||L.service_type],
+         ['Purpose',L.purpose],['Source',L.source],['Est. value',(L.value||L.est_value)?money(L.value||L.est_value):'—']
+        ].filter(function(r){return r[1];}).map(function(r){return h(F,{key:r[0]},h('span',{style:{color:C.mist}},r[0]),h('span',{style:{color:C.cream,fontWeight:500}},r[1]));})
+      ),
+      h(Lbl,null,'Status'),
+      h('div',{style:{display:'flex',flexWrap:'wrap',gap:7,marginBottom:16}},
+        STATUSES.map(function(s){
+          return h('button',{key:s,onClick:function(){p.updateLead(L.id,{status:s});},style:{cursor:'pointer',padding:'6px 12px',borderRadius:100,fontSize:12.5,fontWeight:500,fontFamily:bd,border:'1px solid '+(L.status===s?SCLR[s]:'rgba(255,255,255,.14)'),background:L.status===s?SCLR[s]+'22':'transparent',color:L.status===s?SCLR[s]:C.mist}},s);})),
+      h(Lbl,null,'Assign to consultant'),
+      h('select',{defaultValue:L.assignee||L.assigned_to||'',onChange:function(e){p.updateLead(L.id,{assignee:e.target.value,assigned_to:e.target.value});},style:Object.assign({},IS,{marginBottom:16})},
+        h('option',{value:'',style:{color:'#000'}},'Unassigned'),
+        CONS.map(function(c){return h('option',{key:c.name,style:{color:'#000'}},c.name);})),
+      h(Lbl,null,'Estimated booking value (R)'),
+      h('input',{type:'number',value:val,onChange:function(e){setVal(e.target.value);},onBlur:function(){p.updateLead(L.id,{value:Number(val),est_value:Number(val)});},style:Object.assign({},IS,{marginBottom:16})}),
+      h(Lbl,null,'Notes & communication log'),
+      L.notes&&h('div',{style:Object.assign({},glass(.05),{borderColor:C.line,borderRadius:12,padding:12,fontSize:13,color:C.cream,whiteSpace:'pre-wrap',marginBottom:10,lineHeight:1.5})},L.notes),
+      h('div',{style:{display:'flex',gap:8,marginBottom:18}},
+        h('input',{value:note,onChange:function(e){setNote(e.target.value);},placeholder:'Add a note…',style:Object.assign({},IS,{flex:1})}),
+        h('button',{onClick:function(){if(note.trim()){var stamp=new Date().toLocaleString('en-ZA');p.updateLead(L.id,{notes:(L.notes?L.notes+'\n':'')+'['+stamp+'] '+note.trim()});setNote('');}},style:BP.sm},'Add')),
+      h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
+        h('a',{href:waLink(L),target:'_blank',rel:'noreferrer',style:Object.assign({},BP.pri,{textDecoration:'none',display:'inline-flex',gap:7,alignItems:'center'})},h(WaIco,{s:15}),' WhatsApp'),
+        h('a',{href:emailLink(L),style:Object.assign({},BP.ghost,{textDecoration:'none'})},'Email'),
+        h('button',{onClick:function(){if(confirm('Delete this lead permanently?')){p.removeLead(L.id);p.close();}},style:Object.assign({},BP.ghost,{color:'#ff8080',borderColor:'rgba(255,128,128,.35)'})},'Delete'))));}
+
+// ═══════════════════════════════════════════════════════
+//  FOOTER
+// ═══════════════════════════════════════════════════════
+function FooterComp(p){
+  return h('footer',{style:{borderTop:'1px solid '+C.line,padding:'40px 20px 30px',background:'rgba(0,0,0,.2)',marginTop:20}},
+    h('div',{style:{maxWidth:1240,margin:'0 auto',display:'flex',flexWrap:'wrap',gap:28,justifyContent:'space-between'}},
+      h('div',{style:{maxWidth:300}},
+        h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:12}},h(LogoMark,null),h('div',{style:{fontFamily:dp,fontSize:18,fontWeight:600}},'Urban Tickets')),
+        h('p',{style:{color:C.mist,fontSize:13.5,lineHeight:1.6,margin:0}},'South African travel agency for flights, hotels, holiday packages and car rentals.'),
+        h('a',{href:'mailto:'+EMAIL,style:{color:C.gold,fontSize:13.5,textDecoration:'none',display:'block',marginTop:12}},EMAIL)),
+      h('div',null,
+        h('p',{style:{fontSize:11,textTransform:'uppercase',letterSpacing:1.4,color:C.gold,margin:'0 0 12px'}},'Talk to a consultant'),
+        CONS.map(function(c){return h('a',{key:c.name,href:'https://wa.me/'+c.wa,target:'_blank',rel:'noreferrer',style:{display:'block',color:C.cream,fontSize:14,textDecoration:'none',marginBottom:9}},h('b',{style:{fontWeight:600}},c.name),h('span',{style:{color:C.mist}},' · '+c.phone));})),
+      h('div',null,
+        h('p',{style:{fontSize:11,textTransform:'uppercase',letterSpacing:1.4,color:C.gold,margin:'0 0 12px'}},'Explore'),
+        [['Home','home'],['Services','services'],['Dashboard','admin']].map(function(l){return h('button',{key:l[1],onClick:function(){p.setRoute(l[1]);},style:{display:'block',background:'none',border:'none',color:C.mist,fontSize:14,cursor:'pointer',padding:'0 0 9px',fontFamily:bd}},l[0]);}))),
+    h('div',{style:{maxWidth:1240,margin:'26px auto 0',paddingTop:18,borderTop:'1px solid rgba(255,255,255,.06)',color:C.mist,fontSize:12,display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8}},
+      h('span',null,'© '+new Date().getFullYear()+' Urban Tickets · Urban Travel & Flights'),
+      h('span',null,CONFIGURED?'Connected to Supabase ✓':'Demo mode — add Supabase keys to go live')));}
+
+// ═══════════════════════════════════════════════════════
+//  MOUNT
+// ═══════════════════════════════════════════════════════
+var root=ReactDOM.createRoot(document.getElementById('root'));
+root.render(h(App,null));
+</script>
+</body>
+</html>

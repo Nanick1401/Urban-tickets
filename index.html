@@ -4,14 +4,31 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Urban Tickets — Your Journey Starts Here</title>
-<meta name="description" content="South African travel agency. Free quotes on flights, hotels, packages and car rentals."/>
+<meta name="description" content="Urban Tickets — South African travel agency. Affordable flights, hotels, holiday packages and car rentals. Free quotes from real consultants, sent straight to WhatsApp."/>
+<meta name="keywords" content="travel agency South Africa, cheap flights, hotel booking, car rental, holiday packages, travel quotes, Urban Tickets"/>
+<meta name="author" content="Urban Tickets"/>
+<meta name="robots" content="index, follow"/>
+<meta property="og:title" content="Urban Tickets — Your Journey Starts Here"/>
+<meta property="og:description" content="Affordable flights, hotels, holiday packages and car rentals across South Africa and beyond. Free quotes in minutes."/>
+<meta property="og:type" content="website"/>
+<meta property="og:locale" content="en_ZA"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Urban Tickets — Your Journey Starts Here"/>
+<meta name="twitter:description" content="Affordable flights, hotels, packages and car rentals. Free quotes from real South African consultants."/>
+<meta name="theme-color" content="#081227"/>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TravelAgency","name":"Urban Tickets","slogan":"Your Journey Starts Here","description":"South African travel agency for flights, hotels, holiday packages and car rentals.","email":"urbantravelflights@gmail.com","telephone":"+27679616149","areaServed":"ZA","priceRange":"$$"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#081227;color:#F6F2E9;font-family:'Inter',system-ui,sans-serif;overflow-x:hidden}
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{background:#081227;color:#F6F2E9;font-family:'Inter',system-ui,sans-serif}
+#root{width:100%;max-width:100%;overflow-x:hidden}
+img,svg,video{max-width:100%;height:auto}
+h1,h2,h3,p{overflow-wrap:break-word;word-wrap:break-word}
+input,select,textarea{min-width:0;max-width:100%}
 input,select,button{font-family:inherit}
 input::placeholder{color:rgba(159,180,214,0.5)}
 ::-webkit-scrollbar{width:7px;height:7px}
@@ -25,6 +42,18 @@ input::placeholder{color:rgba(159,180,214,0.5)}
 #splash.hide{opacity:0;pointer-events:none}
 .spinner{width:44px;height:44px;border:3px solid rgba(232,180,74,.2);border-top-color:#E8B44A;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:760px){
+  .ut-hd{flex-direction:column;gap:10px;padding:12px 14px !important}
+  .ut-nav{gap:16px !important;width:100%;justify-content:center;flex-wrap:wrap}
+  .ut-tag{display:none}
+  .ut-sec{padding:30px 16px !important}
+  .ut-hero{padding-bottom:36px !important;padding-top:24px !important}
+}
+@media(max-width:430px){
+  .ut-nav{gap:11px !important}
+  .ut-nav>button{font-size:13px !important;padding:7px 3px !important}
+}
+
 </style>
 </head>
 <body>
@@ -50,6 +79,8 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 window.EMAILJS_PUBLIC_KEY  = 'YOUR_EMAILJS_PUBLIC_KEY';
 window.EMAILJS_SERVICE_ID  = 'YOUR_EMAILJS_SERVICE_ID';
 window.EMAILJS_TEMPLATE_ID = 'YOUR_EMAILJS_TEMPLATE_ID';
+// Optional CRM: paste your Google Sheet Web App URL to auto-capture every lead in a spreadsheet
+window.SHEET_WEBHOOK_URL   = 'YOUR_GOOGLE_SHEET_WEBHOOK_URL';
 // Show a hint if loading takes >2s (likely opened in wrong viewer)
 setTimeout(function(){
   var el=document.getElementById('splash-hint');
@@ -79,6 +110,7 @@ var h=React.createElement,
 // ── Init Supabase ──────────────────────────────────────
 var CONFIGURED=window.SUPABASE_URL&&!window.SUPABASE_URL.includes('YOUR_');
 var EJ_ON=window.EMAILJS_PUBLIC_KEY&&!window.EMAILJS_PUBLIC_KEY.includes('YOUR_');
+var SHEET_ON=window.SHEET_WEBHOOK_URL&&!window.SHEET_WEBHOOK_URL.includes('YOUR_');
 var db=null;
 if(CONFIGURED){try{db=supabase.createClient(window.SUPABASE_URL,window.SUPABASE_ANON_KEY);}catch(e){console.warn(e);}}
 if(EJ_ON&&window.emailjs){try{emailjs.init(window.EMAILJS_PUBLIC_KEY);}catch(e){}}
@@ -97,9 +129,10 @@ var BP={pri:{background:'linear-gradient(135deg,'+C.gold+','+C.soft+')',color:C.
 
 // ── Constants ──────────────────────────────────────────
 var EMAIL='urbantravelflights@gmail.com';
-var CONS=[{name:'Hlengiwe Vilakazi',phone:'+27 67 008 9460',wa:'27670089460'},
-  {name:'Lamla Shasha',phone:'+27 67 961 6149',wa:'27679616149'},
-  {name:'Luvuyo Namba',phone:'+27 68 180 8691',wa:'27681808691'}];
+var CONS=[{name:'Lamla Shasha',phone:'+27 67 961 6149',wa:'27679616149'},
+  {name:'Hlengiwe Vilakazi',phone:'+27 67 961 6149',wa:'27679616149'},
+  {name:'Luvuyo Namba',phone:'+27 67 961 6149',wa:'27679616149'}];
+var PRIMARY_WA='27679616149';
 var STATUSES=['New','Contacted','Quote Sent','Negotiating','Confirmed','Lost'];
 var SCLR={New:'#2C7BE5',Contacted:'#7C5CFF','Quote Sent':'#E8B44A',Negotiating:'#F08C3A',Confirmed:'#2FB47C',Lost:'#8A93A6'};
 
@@ -117,7 +150,7 @@ function buildWA(L){
     L.purpose?'*Purpose:* '+L.purpose:'','','*Source:* '+(L.source||'Website'),
   ].filter(function(l){return l!==null&&l!==undefined;}).join('\n');
 }
-function waLink(lead,num){return 'https://wa.me/'+(num||'27670089460')+'?text='+encodeURIComponent(buildWA(lead));}
+function waLink(lead,num){return 'https://wa.me/'+(num||'27679616149')+'?text='+encodeURIComponent(buildWA(lead));}
 function emailLink(lead){
   var sub='New Enquiry — '+(lead.name||'Lead')+' ('+fv(lead,'service','service_type')||'General'+')';
   return 'mailto:'+EMAIL+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(buildWA(lead).replace(/\*/g,''));
@@ -160,7 +193,7 @@ function Lbl(p){return h('p',{style:{fontSize:11,textTransform:'uppercase',lette
 function Tog(p){return h('button',{onClick:p.onClick,style:{cursor:'pointer',padding:'9px 16px',borderRadius:100,fontFamily:bd,fontSize:13.5,fontWeight:500,border:'1px solid '+(p.on?C.gold:'rgba(255,255,255,.14)'),background:p.on?'linear-gradient(135deg,'+C.gold+','+C.soft+')':'transparent',color:p.on?C.navy:C.mist}},p.children);}
 function Stat(p){return h('div',{style:Object.assign({},glass(.05),{borderColor:C.line,borderRadius:16,padding:18})},h('div',{style:{fontSize:11,color:C.mist,textTransform:'uppercase',letterSpacing:1}},p.label),h('div',{style:{fontFamily:dp,fontSize:26,fontWeight:600,marginTop:6,color:p.accent||C.cream}},p.v));}
 function Section(p){
-  return h('section',{style:{padding:'44px 20px'}},
+  return h('section',{className:'ut-sec',style:{padding:'44px 20px'}},
     h('div',{style:{maxWidth:1240,margin:'0 auto'}},
       h('div',{style:{marginBottom:26}},
         p.eyebrow&&h('p',{style:{fontSize:11.5,textTransform:'uppercase',letterSpacing:2,color:C.gold,margin:'0 0 10px'}},p.eyebrow),
@@ -240,6 +273,18 @@ function App(){
         purpose:lead.purpose||'—',source:lead.source||'Website',full_message:buildWA(lead).replace(/\*/g,'')
       });}catch(e){console.warn('EmailJS:',e);}
     }
+    if(SHEET_ON){
+      try{
+        fetch(window.SHEET_WEBHOOK_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+          body:JSON.stringify({
+            timestamp:new Date().toLocaleString('en-ZA'),
+            name:lead.name||'',phone:lead.phone||'',email:lead.email||'',
+            from:lead.from||'',to:lead.to||'',depart:lead.depart||'',ret:lead.ret||'',
+            travellers:lead.travellers||'',budget:lead.budget||'',service:lead.service||'',
+            purpose:lead.purpose||'',source:lead.source||'Website'
+          })});
+      }catch(e){console.warn('Sheet:',e);}
+    }
     flash('Enquiry for '+(lead.name||'new lead')+' saved — team notified');
     return norm(saved);
   },[]);
@@ -294,14 +339,14 @@ function Nav(p){
   },[]);
   function NL(np){
     return h('button',{onClick:function(){p.setRoute(np.id);setMenu(false);},style:{background:'none',border:'none',cursor:'pointer',fontFamily:bd,fontSize:14.5,fontWeight:500,padding:'8px 4px',color:p.route===np.id?C.gold:C.mist,letterSpacing:.2,borderBottom:p.route===np.id?'2px solid '+C.gold:'2px solid transparent'}},np.children);}
-  return h('header',{style:{position:'sticky',top:0,zIndex:70,transition:'all .3s',background:scrolled?'rgba(8,18,39,0.85)':'transparent',backdropFilter:scrolled?'blur(16px)':'none',borderBottom:scrolled?'1px solid '+C.line:'1px solid transparent'}},
-    h('div',{style:{maxWidth:1240,margin:'0 auto',padding:'14px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
+  return h('header',{style:{position:'sticky',top:0,zIndex:70,transition:'all .3s',background:scrolled?'rgba(8,18,39,0.92)':'rgba(8,18,39,0.4)',backdropFilter:'blur(16px)',borderBottom:scrolled?'1px solid '+C.line:'1px solid transparent'}},
+    h('div',{className:'ut-hd',style:{maxWidth:1240,margin:'0 auto',padding:'12px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
       h('button',{onClick:function(){p.setRoute('home');},style:{background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:10}},
         h(LogoMark,null),
         h('div',{style:{textAlign:'left',lineHeight:1}},
           h('div',{style:{fontFamily:dp,fontSize:18,fontWeight:600,color:C.cream}},'Urban Tickets'),
-          h('div',{style:{fontSize:9,color:C.gold,letterSpacing:2.2,marginTop:3,textTransform:'uppercase'}},'Your Journey Starts Here'))),
-      h('nav',{style:{display:'flex',alignItems:'center',gap:24}},
+          h('div',{className:'ut-tag',style:{fontSize:9,color:C.gold,letterSpacing:2.2,marginTop:3,textTransform:'uppercase'}},'Your Journey Starts Here'))),
+      h('nav',{className:'ut-nav',style:{display:'flex',alignItems:'center',gap:24}},
         h(NL,{id:'home'},'Home'),h(NL,{id:'services'},'Services'),
         h(NL,{id:'admin'},p.user?'Dashboard ●':'Dashboard'),
         h('button',{onClick:p.onQuote,style:BP.sm},'Get Free Quote'))));}
@@ -316,7 +361,7 @@ function Hero(p){
   var ts=useState({from:'',to:'',depart:'',ret:'',travellers:'2'}),t=ts[0],setT=ts[1];
   function s(k){return function(e){setT(function(prev){var n=Object.assign({},prev);n[k]=e.target.value;return n;});};}
   var fields=[['from','Travelling from','text','e.g. Johannesburg'],['to','Travelling to','text','e.g. Cape Town'],['depart','Departure','date'],['ret','Return','date'],['travellers','Travellers','number']];
-  return h('section',{style:{position:'relative',paddingTop:40,paddingBottom:70,overflow:'hidden'}},
+  return h('section',{className:'ut-hero',style:{position:'relative',paddingTop:40,paddingBottom:70,overflow:'hidden'}},
     h('div',{style:{position:'absolute',inset:0,background:'radial-gradient(900px 500px at 80% -8%,rgba(44,123,229,.28),transparent 60%),radial-gradient(700px 500px at 8% 18%,rgba(232,180,74,.14),transparent 60%),linear-gradient(180deg,'+C.navy2+' 0%,'+C.navy+' 70%)'}}),
     h('div',{style:{position:'relative',maxWidth:1100,margin:'0 auto',padding:'0 20px',textAlign:'center'}},
       h('div',{style:{display:'inline-flex',alignItems:'center',gap:8,padding:'7px 15px',borderRadius:100,fontSize:12,color:C.soft,letterSpacing:.4,marginBottom:22,background:'rgba(255,255,255,.06)',border:'1px solid '+C.line}},
@@ -525,7 +570,7 @@ function ChatSum(p){
     h('div',{style:{fontFamily:dp,fontWeight:600,fontSize:14,color:C.gold,marginBottom:8}},'Your Enquiry Summary'),
     h('div',{style:{display:'grid',gridTemplateColumns:'auto 1fr',gap:'5px 12px',fontSize:13}},
       rows.map(function(r){return h(F,{key:r[0]},h('span',{style:{color:C.mist}},r[0]),h('span',{style:{color:C.cream,fontWeight:500}},r[1]));})),
-    h('div',{style:{marginTop:9,fontSize:11.5,color:C.mist,lineHeight:1.5}},'✓ Saved'+(CONFIGURED?' to Supabase':'')+(EJ_ON?', email sent':''),' · A consultant will be in touch shortly.'));}
+    h('div',{style:{marginTop:9,fontSize:11.5,color:C.mist,lineHeight:1.5}},'✓ Saved'+(CONFIGURED?' to database':'')+(EJ_ON?', emailed':'')+(SHEET_ON?', logged to sheet':''),' · A consultant will WhatsApp you shortly.'));}
 
 // ═══════════════════════════════════════════════════════
 //  ADMIN DASHBOARD
@@ -539,6 +584,17 @@ function AdminPage(p){
   var fls=useState('All'),filter=fls[0],setFilter=fls[1];
   var vs=useState('pipeline'),view=vs[0],setView=vs[1];
   var sels=useState(null),selected=sels[0],setSelected=sels[1];
+  // IMPORTANT: all hooks (useMemo) must run on EVERY render, before any early return.
+  var stats=useMemo(function(){
+    var total=p.leads.length,conf=p.leads.filter(function(l){return l.status==='Confirmed';});
+    var rev=conf.reduce(function(s,l){return s+(l.value||l.est_value||0);},0);
+    var pipe=p.leads.filter(function(l){return !['Confirmed','Lost'].includes(l.status);}).reduce(function(s,l){return s+(l.value||l.est_value||0);},0);
+    var conv=total?Math.round((conf.length/total)*100):0,bySrc={};
+    p.leads.forEach(function(l){var k=l.source||'Other';bySrc[k]=(bySrc[k]||0)+1;});
+    return{total:total,confirmed:conf.length,rev:rev,pipe:pipe,conv:conv,bySrc:bySrc};},[p.leads]);
+  var filtered=p.leads.filter(function(l){
+    var mq=!q||[l.name,l.email,l.phone,l.from,l.to,l.service,l.from_city,l.to_city,l.service_type].join(' ').toLowerCase().includes(q.toLowerCase());
+    var mf=filter==='All'||l.status===filter;return mq&&mf;});
   async function signIn(){
     if(!db){setErr('Supabase not configured. Fill in your keys in the CONFIG section.');return;}
     setLoading(true);setErr('');
@@ -557,16 +613,6 @@ function AdminPage(p){
         h('input',{value:password,onChange:function(e){setPassword(e.target.value);},type:'password',placeholder:'Password',onKeyDown:function(e){if(e.key==='Enter')signIn();},style:Object.assign({},IS,{marginBottom:14})}),
         err&&h('div',{style:{color:'#ff8080',fontSize:12.5,marginBottom:12}},err),
         h('button',{onClick:signIn,disabled:loading,style:Object.assign({},BP.pri,{width:'100%'})},loading?'Signing in…':'Sign in')));}
-  var filtered=p.leads.filter(function(l){
-    var mq=!q||[l.name,l.email,l.phone,l.from,l.to,l.service,l.from_city,l.to_city,l.service_type].join(' ').toLowerCase().includes(q.toLowerCase());
-    var mf=filter==='All'||l.status===filter;return mq&&mf;});
-  var stats=useMemo(function(){
-    var total=p.leads.length,conf=p.leads.filter(function(l){return l.status==='Confirmed';});
-    var rev=conf.reduce(function(s,l){return s+(l.value||l.est_value||0);},0);
-    var pipe=p.leads.filter(function(l){return !['Confirmed','Lost'].includes(l.status);}).reduce(function(s,l){return s+(l.value||l.est_value||0);},0);
-    var conv=total?Math.round((conf.length/total)*100):0,bySrc={};
-    p.leads.forEach(function(l){var k=l.source||'Other';bySrc[k]=(bySrc[k]||0)+1;});
-    return{total:total,confirmed:conf.length,rev:rev,pipe:pipe,conv:conv,bySrc:bySrc};},[p.leads]);
   return h('main',{style:{paddingTop:24,paddingBottom:60}},
     h('div',{style:{maxWidth:1240,margin:'0 auto',padding:'0 20px'}},
       h('div',{style:{display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'space-between',gap:12,marginBottom:22}},
